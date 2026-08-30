@@ -5,32 +5,51 @@ import pandas as pd
 st.set_page_config(page_title="EDA Dashboard", page_icon="📊", layout="wide")
 
 # --- СТИЛИ (чуть-чуть CSS для красоты) ---
-# Увеличиваем шрифт и делаем фон чуть темнее в боковой панели
 st.markdown("""
 <style>
-    .stMetric { border: 1px solid #e0e0e0; border-radius: 10px; padding: 15px; background-color: #f9f9f9; }
+    .stMetric {
+        border: 1px solid rgba(128, 128, 128, 0.3); 
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # --- БОКОВАЯ ПАНЕЛЬ (Sidebar) ---
 with st.sidebar:
     st.header("⚙️ Настройки")
-    uploaded_file = st.file_uploader("Загрузите CSV файл", type=['csv'])
-    st.markdown("---")
-    st.write("💡 **Tip:** Это веб-приложение автоматически ищет пропуски, дубликаты и аномалии в данных.")
+    
+    # Принимаем несколько файлов! accept_multiple_files=True
+    uploaded_files = st.file_uploader("Загрузите CSV файлы", type=['csv'], accept_multiple_files=True)
+    
+    selected_file_name = None
+    selected_file = None
+    
+    # Если загружен хотя бы один файл, показываем переключатель
+    if uploaded_files:
+        # Собираем названия загруженных файлов
+        file_names = [f.name for f in uploaded_files]
+        # Создаем выпадающий список для выбора
+        selected_file_name = st.selectbox("Выберите файл для анализа:", file_names)
+        
+        # Находим объект файла по выбранному названию
+        selected_file = next((f for f in uploaded_files if f.name == selected_file_name), None)
 
 # Главный заголовок
-st.title("📊 Интеллектуальный анализ данных (EDA)")
+st.title("📊 Анализ данных (EDA)")
 
-# Если файл загружен, работаем
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+# Если файл выбран, работаем с ним
+if selected_file is not None:
+    # Показываем название файла, который сейчас анализируем
+    st.caption(f"📂 Текущий файл: `{selected_file_name}`")
+    
+    df = pd.read_csv(selected_file)
     rows, cols = df.shape
 
     # --- БЛОК 1: KPI КАРТОЧКИ ---
     st.markdown("### 📈 Основные метрики")
     
-    # Разбиваем экран на 4 колонки
     col1, col2, col3, col4 = st.columns(4)
     
     col1.metric("Всего строк", rows)
@@ -43,7 +62,6 @@ if uploaded_file is not None:
     else:
         col3.metric("Дубликатов", "0 ✅")
         
-    # Считаем процент пропусков по всей таблице
     total_cells = rows * cols
     total_missing = df.isna().sum().sum()
     missing_pct = round((total_missing / total_cells) * 100, 2)
@@ -52,7 +70,7 @@ if uploaded_file is not None:
     st.markdown("---")
 
     # --- БЛОК 2: ПРОСМОТР ДАННЫХ И ПРОПУСКОВ ---
-    col_left, col_right = st.columns([1, 1]) # Две колонки одинаковой ширины
+    col_left, col_right = st.columns([1, 1])
 
     with col_left:
         st.subheader("👀 Первые 5 строк")
@@ -78,11 +96,10 @@ if uploaded_file is not None:
     st.markdown("---")
     st.subheader("📚 Подробная статистика")
     
-    # Expander делает блок сворачиваемым
-    with st.expander("Развернуть статистику по ЧИСЛОВЫМ колонкам"):
+    with st.expander("Статистика по ЧИСЛОВЫМ колонкам"):
         st.dataframe(df.describe().T, use_container_width=True)
         
-    with st.expander("Развернуть статистику по ТЕКСТОВЫМ колонкам"):
+    with st.expander("Статистика по ТЕКСТОВЫМ колонкам"):
         text_stats = df.describe(include='object').T
         if not text_stats.empty:
             st.dataframe(text_stats[['count', 'unique', 'top', 'freq']], use_container_width=True)
@@ -90,5 +107,5 @@ if uploaded_file is not None:
             st.write("Текстовых колонок не найдено.")
 
 else:
-    # Если файл не загружен, показываем красивую заглушку
-    st.info("👈 Пожалуйста, загрузите CSV-файл в боковой панели слева.")
+    # Если файлы не загружены, показываем заглушку
+    st.info("👈 Пожалуйста, загрузите один или несколько CSV-файлов в боковой панели слева.")
